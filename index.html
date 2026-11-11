@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accounting Management System</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <h1 class="brand">Accounting<br>Management System</h1>
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-page="accounts">Chart of Accounts</button>
+      <button class="nav-item" data-page="transactions">Business Transactions</button>
+      <button class="nav-item" data-page="trial-balance">Trial Balance</button>
+      <button class="nav-item" data-page="adjustments">Adjustments</button>
+      <button class="nav-item" data-page="adjusted-trial-balance">Adjusted Trial Balance</button>
+      <button class="nav-item" data-page="income-statement">Income Statement</button>
+      <button class="nav-item" data-page="owners-equity">Owner's Equity</button>
+      <button class="nav-item" data-page="financial-position">Financial Position</button>
+    </nav>
+  </aside>
+
+  <!-- ============ MAIN CONTENT ============ -->
+  <main class="content">
+
+    <div id="setup-banner" class="banner hidden">
+      <strong>Database not connected.</strong>
+      Open <code>script.js</code> and paste your Supabase URL and anon key at the top of the file.
+    </div>
+    <div id="status" class="status hidden" role="status"></div>
+
+    <!-- Chart of Accounts -->
+    <section class="page active" id="page-accounts">
+      <header class="page-head">
+        <h2>Chart of Accounts</h2>
+      </header>
+
+      <form class="card form-grid" id="account-form" autocomplete="off">
+        <label class="c2">Account Code
+          <input type="text" name="code" required>
+        </label>
+        <label class="c4">Account Name
+          <input type="text" name="account_name" required>
+        </label>
+        <label class="c4">Account Type
+          <select name="type" required>
+            <option value="" disabled selected>Select type</option>
+            <option value="Asset">Asset</option>
+            <option value="Liability">Liability</option>
+            <option value="Equity">Equity (Owner's Capital)</option>
+            <option value="Revenue">Revenue</option>
+            <option value="Expense">Expense</option>
+          </select>
+        </label>
+        <button class="btn c2" type="submit">Add Account</button>
+      </form>
+
+      <div class="card table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th><th>Account Name</th><th>Type</th><th>Normal Balance</th><th class="act"></th>
+            </tr>
+          </thead>
+          <tbody id="accounts-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+        <!-- Business Transactions -->
+    <section class="page" id="page-transactions">
+      <header class="page-head">
+        <h2>Business Transactions</h2>
+      </header>
+
+      <form class="card entry-form" data-kind="transaction" autocomplete="off">
+        <h3 class="card-title">New journal entry</h3>
+        <div class="entry-head">
+          <label>Date
+            <input type="date" name="entry_date" required>
+          </label>
+          <label>Reference no.
+            <input type="text" name="reference">
+          </label>
+          <label>Description
+            <input type="text" name="description">
+          </label>
+        </div>
+        <div class="scroll">
+          <table class="lines-table">
+            <thead>
+              <tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th class="act"></th></tr>
+            </thead>
+            <tbody class="lines-body"></tbody>
+            <tfoot>
+              <tr><td>Totals</td><td class="num tot-debit"></td><td class="num tot-credit"></td><td></td></tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn ghost" data-add-line>Add line</button>
+          <button type="submit" class="btn">Save entry</button>
+          <span class="balance-hint" role="status"></span>
+        </div>
+      </form>
+
+      <div class="card">
+        <h3 class="card-title" data-entries-title="transaction">Journal (0)</h3>
+        <div class="scroll">
+          <table class="journal">
+            <thead>
+              <tr><th>Date</th><th>Account and Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="act"></th></tr>
+            </thead>
+            <tbody data-entries="transaction"></tbody>
+            <tfoot data-entries-total="transaction"></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trial Balance -->
+    <section class="page" id="page-trial-balance">
+      <header class="page-head">
+        <h2>Trial Balance</h2>
+      </header>
+      <div class="card table-wrap" id="trial-balance-out"></div>
+    </section>
+
+        <!-- Adjustments -->
+    <section class="page" id="page-adjustments">
+      <header class="page-head">
+        <h2>Adjustments</h2>
+      </header>
+
+      <form class="card entry-form" data-kind="adjustment" autocomplete="off">
+        <h3 class="card-title">New journal entry</h3>
+        <div class="entry-head">
+          <label>Date
+            <input type="date" name="entry_date" required>
+          </label>
+          <label>Reference no.
+            <input type="text" name="reference">
+          </label>
+          <label>Description
+            <input type="text" name="description">
+          </label>
+        </div>
+        <div class="scroll">
+          <table class="lines-table">
+            <thead>
+              <tr><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th class="act"></th></tr>
+            </thead>
+            <tbody class="lines-body"></tbody>
+            <tfoot>
+              <tr><td>Totals</td><td class="num tot-debit"></td><td class="num tot-credit"></td><td></td></tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn ghost" data-add-line>Add line</button>
+          <button type="submit" class="btn">Save entry</button>
+          <span class="balance-hint" role="status"></span>
+        </div>
+      </form>
+
+      <div class="card">
+        <h3 class="card-title" data-entries-title="adjustment">Adjusting Entries (0)</h3>
+        <div class="scroll">
+          <table class="journal">
+            <thead>
+              <tr><th>Date</th><th>Account and Description</th><th class="num">Debit</th><th class="num">Credit</th><th class="act"></th></tr>
+            </thead>
+            <tbody data-entries="adjustment"></tbody>
+            <tfoot data-entries-total="adjustment"></tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Adjusted Trial Balance -->
+    <section class="page" id="page-adjusted-trial-balance">
+      <header class="page-head">
+        <h2>Adjusted Trial Balance</h2>
+      </header>
+      <div class="card table-wrap" id="adjusted-trial-balance-out"></div>
+    </section>
+
+    <!-- Income Statement -->
+    <section class="page" id="page-income-statement">
+      <header class="page-head">
+        <h2>Income Statement</h2>
+      </header>
+      <div id="income-statement-out"></div>
+    </section>
+
+    <!-- Owner's Equity -->
+    <section class="page" id="page-owners-equity">
+      <header class="page-head">
+        <h2>Owner's Equity</h2>
+      </header>
+      <div id="owners-equity-out"></div>
+    </section>
+
+    <!-- Financial Position -->
+    <section class="page" id="page-financial-position">
+      <header class="page-head">
+        <h2>Financial Position</h2>
+      </header>
+      <div id="financial-position-out"></div>
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="script.js"></script>
+</body>
+</html>
