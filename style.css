@@ -276,6 +276,34 @@ tfoot td { font-weight: 700; background: var(--green-soft); border-top: 2px soli
 .cf-table td.cf-double { border-bottom: 3px double var(--ink); font-weight: 700; }
 .cf-gap td { padding: 4px 0; }
 
+/* ===== Home dashboard ===== */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; border-top: 4px solid var(--green); }
+.kpi span { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.kpi strong { display: block; font-size: 1.45rem; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.kpi strong.neg { color: var(--danger); }
+
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+.dash-card { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.dash-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dash-head h3 { font-size: 1.05rem; }
+.link-btn { font: inherit; font-size: .85rem; font-weight: 600; color: var(--ink); background: var(--green-soft); border: 0; border-radius: 6px; padding: 4px 12px; cursor: pointer; }
+.link-btn:hover { background: var(--green); }
+.dash-stats { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.dash-stats span { display: block; font-size: .75rem; color: var(--muted); font-weight: 600; }
+.dash-stats strong { font-size: .95rem; font-variant-numeric: tabular-nums; }
+.dash-stats strong.warn { color: var(--danger); }
+
+.chart { width: 100%; height: auto; display: block; margin-top: auto; }
+.chart text { font-size: 11px; fill: var(--ink); text-anchor: middle; }
+.chart .lbl { font-size: 10px; fill: var(--muted); }
+.chart .zero { stroke: var(--ink); stroke-width: 1; }
+.chart .t1 { fill: #6fa04a; }
+.chart .t2 { fill: #5b84c4; }
+.chart .t3 { fill: #d09a2a; }
+.chart .neg { fill: var(--danger); }
+.chart-empty { text-align: center; color: var(--muted); padding: 44px 0; margin-top: auto; }
+
 /* ===== Small screens ===== */
 @media (max-width: 860px) {
   .sidebar { position: static; width: 100%; padding: 16px 12px; }
