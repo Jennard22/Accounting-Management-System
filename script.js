@@ -1,9 +1,8 @@
 'use strict';
 
-//supabase
-const SUPABASE_URL = 'https://nzlwvesdrwtwunxtplko.supabase.co';   // Project URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bHd2ZXNkcnd0d3VueHRwbGtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNDg4NDgsImV4cCI6MjEwOTkyNDg0OH0.H-0703bfrbEQAVJ0u85BI_LAiuvZHtwly9LUHBrOK6s'; // publishable key
-const CURRENCY = '₱'; 
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const CURRENCY = '₱';
 const COMPANY_NAME = 'AAA Company'; // shown at the top of the Statement of Cash Flow
 
 const isConfigured =
@@ -12,9 +11,7 @@ const db = isConfigured
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-/* =====================================================
-   2. STATE AND HELPERS
-   ===================================================== */
+
 const NORMAL_BALANCE = {
   Asset: 'Debit',
   Expense: 'Debit',
@@ -24,7 +21,7 @@ const NORMAL_BALANCE = {
 };
 
 // Everything loaded from the database, plus the page being shown
-const state = { accounts: [], entries: [], page: 'accounts' };
+const state = { accounts: [], entries: [], page: 'home' };
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -132,7 +129,7 @@ async function refresh() {
 
 // Switches to a page and highlights its tab
 function showPage(page) {
-  if (!$(`#page-${page}`)) page = 'accounts';
+  if (!$(`#page-${page}`)) page = 'home';
   state.page = page;
   $$('.page').forEach((p) => p.classList.toggle('active', p.id === `page-${page}`));
   $$('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
@@ -804,13 +801,188 @@ function renderCashFlows() {
 }
 
 /* =====================================================
-   9. RENDER AND START
+   9. HOME DASHBOARD
+   ===================================================== */
+
+// Short number for chart labels: 1,500 -> 1.5K
+function compact(n) {
+  const a = Math.abs(n);
+  const t = a >= 1e6 ? `${(a / 1e6).toFixed(1)}M` : a >= 1e3 ? `${(a / 1e3).toFixed(1)}K` : a.toFixed(0);
+  const s = t.replace(/\.0(?=[KM])/, '');
+  return n < 0 ? `(${s})` : s;
+}
+
+// Cuts long names so they fit under a bar
+const shorten = (text, max = 11) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+// Bar chart drawn as SVG. data = [{ label, value, tone }]; negatives turn red
+function barChart(data) {
+  if (!data.some((d) => Math.abs(d.value) >= 0.005)) {
+    return '<p class="chart-empty">No data yet.</p>';
+  }
+  const W = 360, H = 190, top = 22, bottom = 34, side = 8;
+  const hi = Math.max(0, ...data.map((d) => d.value));
+  const lo = Math.min(0, ...data.map((d) => d.value));
+  const y = (v) => top + ((hi - v) / (hi - lo)) * (H - top - bottom);
+  const slot = (W - side * 2) / data.length;
+  const width = Math.min(54, slot * 0.6);
+
+  const bars = data.map((d, i) => {
+    const x = side + slot * i + (slot - width) / 2;
+    const y0 = y(0);
+    const y1 = y(d.value);
+    const h = Math.max(Math.abs(y1 - y0), 1);
+    const tone = d.value < 0 ? 'neg' : d.tone || 't1';
+    const labelY = d.value < 0 ? y0 + h + 12 : y1 - 5;
+    return `
+      <rect class="${tone}" x="${x.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${width.toFixed(1)}" height="${h.toFixed(1)}" rx="3">
+        <title>${esc(d.label)}: ${money(d.value)}</title>
+      </rect>
+      <text x="${(x + width / 2).toFixed(1)}" y="${labelY.toFixed(1)}">${compact(d.value)}</text>
+      <text class="lbl" x="${(x + width / 2).toFixed(1)}" y="${H - 8}">${esc(shorten(d.label))}</text>`;
+  }).join('');
+
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Bar chart">
+    <line class="zero" x1="${side}" x2="${W - side}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}"></line>
+    ${bars}
+  </svg>`;
+}
+
+// One dashboard card: title, link to the tab, key figures and a chart
+function dashCard(page, title, stats, chart) {
+  const figures = stats.map(([label, value, cls = '']) =>
+    `<div><span>${label}</span><strong class="${cls}">${value}</strong></div>`).join('');
+  return `
+    <section class="card dash-card">
+      <div class="dash-head">
+        <h3>${title}</h3>
+        <button type="button" class="link-btn" data-go="${page}">View</button>
+      </div>
+      <div class="dash-stats">${figures}</div>
+      ${chart}
+    </section>`;
+}
+
+// Draws the summary cards and charts for every tab
+function renderHome() {
+  const out = $('#home-out');
+  const s = statements();
+  const cf = collectCashFlows();
+  const sumMap = (m) => [...m.values()].reduce((a, b) => a + b, 0);
+  const operating = sumMap(cf.groups.Operating);
+  const investing = sumMap(cf.groups.Investing);
+  const financing = sumMap(cf.groups.Financing);
+
+  const transactions = state.entries.filter((e) => e.kind === 'transaction');
+  const adjustments = state.entries.filter((e) => e.kind === 'adjustment');
+  const entryTotal = (list) => list.reduce((sum, e) =>
+    sum + (e.journal_lines || []).reduce((t, l) => t + Number(l.debit), 0), 0);
+
+  // Debit and credit column totals of a trial balance
+  const split = (rows) => rows.reduce((t, r) => {
+    const n = net(r);
+    if (n > 0) t.debit += n; else t.credit -= n;
+    return t;
+  }, { debit: 0, credit: 0 });
+  const tb = split(totals(['transaction']));
+  const atb = split(totals(['transaction', 'adjustment']));
+  const tbBalanced = Math.abs(tb.debit - tb.credit) < 0.005;
+  const atbBalanced = Math.abs(atb.debit - atb.credit) < 0.005;
+  const status = (ok) => (ok ? ['Status', 'Balanced'] : ['Status', 'Out of balance', 'warn']);
+
+  // Transaction amount per month (latest six months)
+  const monthly = [...transactions.reduce((m, e) => {
+    const key = e.entry_date.slice(0, 7);
+    return m.set(key, (m.get(key) || 0) + entryTotal([e]));
+  }, new Map())].sort().slice(-6).map(([key, value]) => {
+    const [yr, mo] = key.split('-').map(Number);
+    return { label: new Date(yr, mo - 1, 1).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), value };
+  });
+
+  // Accounts that the adjustments touch most
+  const adjusted = totals(['adjustment']).filter(isActive)
+    .sort((a, b) => (b.debit + b.credit) - (a.debit + a.credit)).slice(0, 5)
+    .map((r) => ({ label: r.account.name, value: r.debit + r.credit, tone: 't3' }));
+
+  const types = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'];
+  const typeCounts = types.map((t) => ({ label: t, value: state.accounts.filter((a) => a.type === t).length }));
+
+  const incomeName = incomeLabel(s);
+  const kpis = [
+    ['Total Assets', money(s.totalAssets), ''],
+    [incomeName, money(s.netIncome), s.netIncome < 0 ? 'neg' : ''],
+    ['Cash Balance', money(cf.endingCash), cf.endingCash < 0 ? 'neg' : ''],
+    ['Journal Entries', String(state.entries.length), ''],
+  ].map(([label, value, cls]) => `<div class="kpi"><span>${label}</span><strong class="${cls}">${value}</strong></div>`).join('');
+
+  out.innerHTML = `
+    <div class="kpis">${kpis}</div>
+    <div class="dash-grid">
+      ${dashCard('accounts', 'Chart of Accounts',
+        [['Accounts', String(state.accounts.length)]],
+        barChart(typeCounts))}
+      ${dashCard('transactions', 'Business Transactions',
+        [['Entries', String(transactions.length)], ['Total amount', money(entryTotal(transactions))]],
+        barChart(monthly.map((m) => ({ ...m, tone: 't2' }))))}
+      ${dashCard('trial-balance', 'Trial Balance',
+        [['Debits', money(tb.debit)], ['Credits', money(tb.credit)], status(tbBalanced)],
+        barChart([{ label: 'Debits', value: tb.debit }, { label: 'Credits', value: tb.credit, tone: 't2' }]))}
+      ${dashCard('adjustments', 'Adjustments',
+        [['Entries', String(adjustments.length)], ['Total amount', money(entryTotal(adjustments))]],
+        barChart(adjusted))}
+      ${dashCard('adjusted-trial-balance', 'Adjusted Trial Balance',
+        [['Debits', money(atb.debit)], ['Credits', money(atb.credit)], status(atbBalanced)],
+        barChart([
+          { label: 'Unadjusted', value: tb.debit },
+          { label: 'Adjustments', value: entryTotal(adjustments), tone: 't3' },
+          { label: 'Adjusted', value: atb.debit, tone: 't2' },
+        ]))}
+      ${dashCard('income-statement', 'Income Statement',
+        [['Revenue', money(s.totalRevenue)], ['Expenses', money(s.totalExpenses)], [incomeName, money(s.netIncome), s.netIncome < 0 ? 'warn' : '']],
+        barChart([
+          { label: 'Revenue', value: s.totalRevenue },
+          { label: 'Expenses', value: s.totalExpenses, tone: 't3' },
+          { label: incomeName, value: s.netIncome, tone: 't2' },
+        ]))}
+      ${dashCard('owners-equity', "Owner's Equity",
+        [['Capital', money(s.totalCapital)], ['Ending equity', money(s.endingEquity)]],
+        barChart([
+          { label: 'Capital', value: s.totalCapital },
+          { label: incomeName, value: s.netIncome, tone: 't2' },
+          { label: 'Ending', value: s.endingEquity, tone: 't3' },
+        ]))}
+      ${dashCard('financial-position', 'Financial Position',
+        [['Assets', money(s.totalAssets)], ['Liabilities', money(s.totalLiabilities)], status(Math.abs(s.difference) < 0.005)],
+        barChart([
+          { label: 'Assets', value: s.totalAssets },
+          { label: 'Liabilities', value: s.totalLiabilities, tone: 't3' },
+          { label: 'Equity', value: s.endingEquity, tone: 't2' },
+        ]))}
+      ${dashCard('cash-flows', 'Statement of Cash Flows',
+        [['Net change', money(operating + investing + financing)], ['Ending cash', money(cf.endingCash)]],
+        barChart([
+          { label: 'Operating', value: operating },
+          { label: 'Investing', value: investing, tone: 't2' },
+          { label: 'Financing', value: financing, tone: 't3' },
+        ]))}
+    </div>`;
+}
+
+// "View" buttons on the dashboard open their tab
+$('#home-out').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-go]');
+  if (btn) showPage(btn.dataset.go);
+});
+
+/* =====================================================
+   10. RENDER AND START
    ===================================================== */
 
 // Redraws the page that is currently shown
 function render() {
   renderAccountSelects();
   switch (state.page) {
+    case 'home': renderHome(); break;
     case 'accounts': renderAccounts(); break;
     case 'transactions':
     case 'adjustments': renderEntries(); break;
@@ -827,5 +999,5 @@ function render() {
 (async function init() {
   if (!isConfigured) $('#setup-banner').classList.remove('hidden');
   await loadData();
-  showPage(location.hash.replace('#', '') || 'accounts');
+  showPage(location.hash.replace('#', '') || 'home');
 })();
