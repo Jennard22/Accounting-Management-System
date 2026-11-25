@@ -1,8 +1,8 @@
 'use strict';
 
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-const CURRENCY = '₱';
+const SUPABASE_URL = 'https://nzlwvesdrwtwunxtplko.supabase.co';   // Project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56bHd2ZXNkcnd0d3VueHRwbGtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNDg4NDgsImV4cCI6MjEwOTkyNDg0OH0.H-0703bfrbEQAVJ0u85BI_LAiuvZHtwly9LUHBrOK6s'; // publishable key
+const CURRENCY = '₱'; 
 const COMPANY_NAME = 'AAA Company'; // shown at the top of the Statement of Cash Flow
 
 const isConfigured =
